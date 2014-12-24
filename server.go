@@ -3,14 +3,13 @@ package http
 import (
 	"github.com/ian-kent/go-log/log"
 	gotcha "github.com/ian-kent/gotcha/app"
-	"github.com/mailhog/MailHog-Server/config"
 )
 
-func Listen(cfg *config.Config, Asset func(string) ([]byte, error), exitCh chan int, registerCallback func(*gotcha.App)) {
-	log.Info("[HTTP] Binding to address: %s", cfg.HTTPBindAddr)
+func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan int, registerCallback func(*gotcha.App)) {
+	log.Info("[HTTP] Binding to address: %s", httpBindAddr)
 
 	var app = gotcha.Create(Asset)
-	app.Config.Listen = cfg.HTTPBindAddr
+	app.Config.Listen = httpBindAddr
 
 	registerCallback(app)
 
