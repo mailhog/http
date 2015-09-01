@@ -74,16 +74,12 @@ func AuthFile(file string) {
 	}
 }
 
-// Listen binds to httpBindAddr
-func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan int, registerCallback func(http.Handler)) {
-	log.Info("[HTTP] Binding to address: %s", httpBindAddr)
-
-	pat := pat.New()
-	registerCallback(pat)
-
+// BasicAuthHandler is middleware to check HTTP Basic Authentication
+// if an authorisation function is defined.
+func BasicAuthHandler(h http.Handler) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		if Authorised == nil {
-			pat.ServeHTTP(w, req)
+			h.ServeHTTP(w, req)
 			return
 		}
 
@@ -93,10 +89,22 @@ func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan
 			w.WriteHeader(401)
 			return
 		}
-		pat.ServeHTTP(w, req)
+		h.ServeHTTP(w, req)
 	}
 
-	err := http.ListenAndServe(httpBindAddr, http.HandlerFunc(f))
+	return http.HandlerFunc(f)
+}
+
+// Listen binds to httpBindAddr
+func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan int, registerCallback func(http.Handler)) {
+	log.Info("[HTTP] Binding to address: %s", httpBindAddr)
+
+	pat := pat.New()
+	registerCallback(pat)
+
+	auth := BasicAuthHandler(pat)
+
+	err := http.ListenAndServe(httpBindAddr, auth)
 	if err != nil {
 		log.Fatalf("[HTTP] Error binding to address %s: %s", httpBindAddr, err)
 	}
