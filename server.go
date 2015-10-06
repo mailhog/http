@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/gorilla/pat"
-	"github.com/gorilla/handlers"
 	"github.com/ian-kent/go-log/log"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -103,8 +102,8 @@ func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan
 	pat := pat.New()
 	registerCallback(pat)
 
-	compress := handlers.CompressHandler(pat)
-	auth := BasicAuthHandler(compress)
+	//compress := handlers.CompressHandler(pat)
+	auth := BasicAuthHandler(pat) //compress)
 
 	err := http.ListenAndServe(httpBindAddr, auth)
 	if err != nil {
