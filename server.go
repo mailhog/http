@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/pat"
+	"github.com/gorilla/handlers"
 	"github.com/ian-kent/go-log/log"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -74,16 +75,12 @@ func AuthFile(file string) {
 	}
 }
 
-// Listen binds to httpBindAddr
-func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan int, registerCallback func(http.Handler)) {
-	log.Info("[HTTP] Binding to address: %s", httpBindAddr)
-
-	pat := pat.New()
-	registerCallback(pat)
-
+// BasicAuthHandler is middleware to check HTTP Basic Authentication
+// if an authorisation function is defined.
+func BasicAuthHandler(h http.Handler) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		if Authorised == nil {
-			pat.ServeHTTP(w, req)
+			h.ServeHTTP(w, req)
 			return
 		}
 
@@ -93,10 +90,23 @@ func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan
 			w.WriteHeader(401)
 			return
 		}
-		pat.ServeHTTP(w, req)
+		h.ServeHTTP(w, req)
 	}
 
-	err := http.ListenAndServe(httpBindAddr, http.HandlerFunc(f))
+	return http.HandlerFunc(f)
+}
+
+// Listen binds to httpBindAddr
+func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan int, registerCallback func(http.Handler)) {
+	log.Info("[HTTP] Binding to address: %s", httpBindAddr)
+
+	pat := pat.New()
+	registerCallback(pat)
+
+	compress := handlers.CompressHandler(pat)
+	auth := BasicAuthHandler(compress)
+
+	err := http.ListenAndServe(httpBindAddr, auth)
 	if err != nil {
 		log.Fatalf("[HTTP] Error binding to address %s: %s", httpBindAddr, err)
 	}
